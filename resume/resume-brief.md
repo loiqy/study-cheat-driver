@@ -14,29 +14,29 @@
 | VT_Driver | `../VT_Driver/` | VT-x 虚拟化 + 完整功能框架 | ~7,600行 |
 
 ## 当前阶段
-**Stage 0 — 全局地图** ✅ 核心产出已完成，待推进 Stage 1
+**Stage 1 — 单项目结构理解** 🔄 NinDriver ✅ | GsDriver 待做 | VT_Driver 待做
 
 ## 已完成产出
-- `notes/project-map-gsdriver.md` — GsDriver 完整项目地图
-- `notes/project-map-nindriver.md` — NinDriver 完整项目地图
-- `notes/project-map-vtdriver.md` — VT_Driver 完整项目地图
-- `stages/stage-{0..5}-*.md` — 全部阶段定义文件
+- `notes/project-map-{gsdriver,nindriver,vtdriver}.md` — 三个项目地图 (Stage 0)
+- `stages/stage-{0..5}-*.md` — 全部阶段定义文件 (Stage 0)
+- `notes/nindriver-structure.md` — **NinDriver 完整结构分析** (Stage 1) ← 最新
 
-## Stage 0 关键发现
-- 三项目共性: 内核内存读写、隐蔽策略、动态获取内核函数
-- 通信方式各异: 注册表跳板 / 标准 IOCTL / IOCTL+hook
-- 复杂度梯度: NinDriver < GsDriver < VT_Driver
-- NinDriver 最适合作为 Stage 1 的起点
+## NinDriver 结构分析核心结论
+- 双阶段初始化：DriverEntry(自毁) → MapEntry(持久，重映射地址空间)
+- 内存访问：PTE 自映射三层架构（物理读写 → 页表遍历 → 跨页循环）
+- CR3 获取：PFN 数据库扫描（利用页表自引用特征，无需偏移表）
+- 偏移解析：从内核函数机器码提取 EPROCESS 字段偏移
+- 隐蔽：文件自删除 + PE 头清零 + 独立物理页 + 匿名驱动对象
 
 ## 尚未开始
-- Stage 1: 单项目深入结构理解
+- Stage 1: GsDriver 结构分析、VT_Driver 结构分析
 - Stage 2: 核心代码路径分析
 - Stage 3+: 跨项目比较及后续
 
 ## 下一步
-1. 确认 Stage 0 完成
-2. 进入 Stage 1，建议顺序: NinDriver → GsDriver → VT_Driver
-3. 为每个项目生成 `notes/{project}-structure.md`
+1. GsDriver 结构分析 → `notes/gsdriver-structure.md`
+2. VT_Driver 结构分析 → `notes/vtdriver-structure.md`
+3. 完成 Stage 1 后进入 Stage 2
 
 ## 关键规则
 - 所有内容用中文
