@@ -3,11 +3,11 @@
 > 最后更新：2026-03-28
 
 ## 当前阶段
-**Stage 1 — 单项目结构理解** （进行中：NinDriver ✅ → GsDriver 待做 → VT_Driver 待做）
+**Stage 1 — 单项目结构理解** （进行中：NinDriver ✅ → GsDriver ✅ → VT_Driver 待做）
 
 ## Stage 1 进度
 - [x] **NinDriver 结构分析** → `notes/nindriver-structure.md`
-- [ ] GsDriver 结构分析 → `notes/gsdriver-structure.md`
+- [x] **GsDriver 结构分析** → `notes/gsdriver-structure.md`
 - [ ] VT_Driver 结构分析 → `notes/vtdriver-structure.md`
 
 ## Stage 0 已完成 ✅
@@ -17,6 +17,26 @@
 - [x] **GsDriver 项目地图** → `notes/project-map-gsdriver.md`
 - [x] **NinDriver 项目地图** → `notes/project-map-nindriver.md`
 - [x] **VT_Driver 项目地图** → `notes/project-map-vtdriver.md`
+
+## GsDriver 结构分析关键发现 (Stage 1)
+
+### 架构核心：双层驱动 + 注册表通信
+- 驱动外壳：DriverEntry 初始化环境 → 手动映射核心驱动 → 自删除 + 返回 0xE0000000
+- 驱动核心：以系统线程启动，通过 GSDrv.bin 文件接收 DynamicData 指针
+- 通信机制：CmRegisterCallback 注册表回调，22+ 命令码分发
+
+### 功能矩阵
+- 内存读写：MmCopyVirtualMemory (读/写) + MDL 强写 (绕只读)
+- DLL 注入：三种模式 (线程/Hook ZwContinue/Steam 劫持) × 三级隐藏 (VAD/PTE/MDL+PFN)
+- 进程操作：保护/强杀/句柄提权/内存隐藏
+- 外设：键鼠模拟 (直接调用 class driver 回调)
+- 对抗：反 BattlEye IAT hook + 硬件 ID 伪造 (NIC/磁盘/SMBIOS/GPU)
+- 网络：WSK 内核 HTTP POST
+
+### 反检测手段
+- 系统驱动跳板：在 null.sys/beep.sys 等 .text 段 CC 填充中写入跳转代码，回调注册地址指向系统模块
+- 无设备对象：不创建 DriverObject，不使用 IOCTL
+- IAT hash 匹配：核心驱动导入表用 hash 解析
 
 ## NinDriver 结构分析关键发现 (Stage 1)
 
@@ -40,17 +60,17 @@
 - 3 个未导出函数通过 ntoskrnl.exe 特征码扫描定位
 
 ## 待解决问题 (Open Questions)
-- ~~NinDriver 自重映射后驱动对象的生命周期管理~~？→ 已解答：无卸载路径，持续到重启
-- GsDriver 外壳→核心的加载/映射具体机制？
-- VT_Driver 65 个 VM-exit handler 中哪些有实际逻辑？
+- GsDriver: DrvData[1000] 占位符如何被实际核心驱动字节码替换？
+- GsDriver: VMProtect 保护范围？
+- GsDriver: UserVerify 的 RegisterVerify 函数未实现？
+- VT_Driver: 65 个 VM-exit handler 中哪些有实际逻辑？
 - PTE 自映射的 Read/Write 独立自旋锁是否有并发竞态风险？
 - PFN 结构 0x30 字节大小和 EPROCESS 解密公式的版本适用范围？
 - 三个项目的内存读写方式各有什么优劣？
 
 ## 下一步行动
-1. **GsDriver 结构分析** — Stage 1 Step 2
-2. **VT_Driver 结构分析** — Stage 1 Step 3
-3. 完成 Stage 1 后更新阶段状态，进入 Stage 2 核心路径分析
+1. **VT_Driver 结构分析** — Stage 1 最后一步
+2. 完成 Stage 1 后更新阶段状态，进入 Stage 2 核心路径分析
 
 ## 快速跳转
 - 阶段规划 → `learning-roadmap.md`
@@ -58,6 +78,7 @@
 - Stage 0 详情 → `stages/stage-0-global-map.md`
 - Stage 1 详情 → `stages/stage-1-project-structure.md`
 - NinDriver 结构 → `notes/nindriver-structure.md`
+- GsDriver 结构 → `notes/gsdriver-structure.md`
 - GsDriver 地图 → `notes/project-map-gsdriver.md`
 - NinDriver 地图 → `notes/project-map-nindriver.md`
 - VT_Driver 地图 → `notes/project-map-vtdriver.md`

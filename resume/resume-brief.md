@@ -14,12 +14,21 @@
 | VT_Driver | `../VT_Driver/` | VT-x 虚拟化 + 完整功能框架 | ~7,600行 |
 
 ## 当前阶段
-**Stage 1 — 单项目结构理解** 🔄 NinDriver ✅ | GsDriver 待做 | VT_Driver 待做
+**Stage 1 — 单项目结构理解** 🔄 NinDriver ✅ | GsDriver ✅ | VT_Driver 待做
 
 ## 已完成产出
 - `notes/project-map-{gsdriver,nindriver,vtdriver}.md` — 三个项目地图 (Stage 0)
 - `stages/stage-{0..5}-*.md` — 全部阶段定义文件 (Stage 0)
-- `notes/nindriver-structure.md` — **NinDriver 完整结构分析** (Stage 1) ← 最新
+- `notes/nindriver-structure.md` — NinDriver 完整结构分析 (Stage 1)
+- `notes/gsdriver-structure.md` — **GsDriver 完整结构分析** (Stage 1) ← 最新
+
+## GsDriver 结构分析核心结论
+- 双层架构：外壳手动映射核心驱动到 NonPagedPoolExecute，启动为系统线程，外壳自删文件后退出
+- 桥接：DynamicData 指针通过 GSDrv.bin 文件传递，核心读完即删
+- 通信：CmRegisterCallback 注册表回调，22+ 命令码，无设备对象
+- 回调反检测：在系统驱动 (null.sys/beep.sys 等) CC 填充中写入跳板代码
+- 注入：三种模式 (线程/Hook ZwContinue/Steam) × 三级隐藏 (VAD/PTE/MDL+PFN)
+- 其他：句柄提权、进程保护、键鼠模拟、反 BattlEye IAT hook、硬件 ID 伪造、WSK 网络
 
 ## NinDriver 结构分析核心结论
 - 双阶段初始化：DriverEntry(自毁) → MapEntry(持久，重映射地址空间)
@@ -29,14 +38,13 @@
 - 隐蔽：文件自删除 + PE 头清零 + 独立物理页 + 匿名驱动对象
 
 ## 尚未开始
-- Stage 1: GsDriver 结构分析、VT_Driver 结构分析
+- Stage 1: VT_Driver 结构分析
 - Stage 2: 核心代码路径分析
 - Stage 3+: 跨项目比较及后续
 
 ## 下一步
-1. GsDriver 结构分析 → `notes/gsdriver-structure.md`
-2. VT_Driver 结构分析 → `notes/vtdriver-structure.md`
-3. 完成 Stage 1 后进入 Stage 2
+1. VT_Driver 结构分析 → `notes/vtdriver-structure.md`
+2. 完成 Stage 1 后进入 Stage 2
 
 ## 关键规则
 - 所有内容用中文
