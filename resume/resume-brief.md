@@ -14,49 +14,38 @@
 | VT_Driver | `../VT_Driver/` | VT-x 虚拟化 + 完整功能框架 | ~7,600行 |
 
 ## 当前阶段
-**Stage 1 — 单项目结构理解** ✅ 全部完成 → 准备进入 Stage 2
+**Stage 2 — 核心代码路径分析** 🔄 进行中（第 1/4 个主题已完成）
 
 ## 已完成产出
 - `notes/project-map-{gsdriver,nindriver,vtdriver}.md` — 三个项目地图 (Stage 0)
 - `stages/stage-{0..5}-*.md` — 全部阶段定义文件 (Stage 0)
 - `notes/nindriver-structure.md` — NinDriver 完整结构分析 (Stage 1)
 - `notes/gsdriver-structure.md` — GsDriver 完整结构分析 (Stage 1)
-- `notes/vtdriver-structure.md` — **VT_Driver 完整结构分析** (Stage 1) ← 最新
+- `notes/vtdriver-structure.md` — VT_Driver 完整结构分析 (Stage 1)
+- `comparisons/modules/memory-read-write-paths.md` — **内存读写路径跨项目对比** (Stage 2) ← 最新
 
-## 三个项目核心结论
+## Stage 2 内存读写对比核心结论
 
-### VT_Driver (最新)
-- Type-2 Hypervisor：每 CPU VMXON → VMLAUNCH，OS 降级为 Guest
-- EPT 透明钩取：代码页/数据页分离，MTF 单步乒乓，读到原始代码/执行修改代码
-- 四层 Hook: EPT / Inline / SSDT / SSSDT
-- 通信：NtDeviceIoControlFile 钩取，11 个 IOCTL (0x9800~0x9828)
-- VM-exit: 65 个 handler，~20 个有逻辑，6 个 VMCALL 超调用
-- 功能: 内存读写/进程管理/PatchGuard绕过/文件隐藏/窗口隐藏/网络拦截/反调试
+三个项目的内存读写代表了三个不同抽象层级：
 
-### GsDriver
-- 双层架构：外壳手动映射核心驱动到 NonPagedPoolExecute，启动为系统线程，外壳自删文件后退出
-- 桥接：DynamicData 指针通过 GSDrv.bin 文件传递，核心读完即删
-- 通信：CmRegisterCallback 注册表回调，22+ 命令码，无设备对象
-- 回调反检测：在系统驱动 (null.sys/beep.sys 等) CC 填充中写入跳板代码
-- 注入：三种模式 (线程/Hook ZwContinue/Steam) × 三级隐藏 (VAD/PTE/MDL+PFN)
-- 其他：句柄提权、进程保护、键鼠模拟、反 BattlEye IAT hook、硬件 ID 伪造、WSK 网络
+| 项目 | 方案 | 一句话特征 |
+|------|------|-----------|
+| NinDriver | PTE 自映射物理内存 | 物理层操作，完全绕过 API Hook，但每页 4 次物理读+PTE改写，性能最差 |
+| GsDriver | MmCopyVirtualMemory + MDL | 标准 API 路径，最稳定最高效，但调用栈完全暴露 |
+| VT_Driver | KeStackAttach + CR3 切换双模式 | 直接模式简单，系统线程模式隐蔽但有 NMI 蓝屏风险 |
 
-### NinDriver
-- 双阶段初始化：DriverEntry(自毁) → MapEntry(持久，重映射地址空间)
-- 内存访问：PTE 自映射三层架构（物理读写 → 页表遍历 → 跨页循环）
-- CR3 获取：PFN 数据库扫描（利用页表自引用特征，无需偏移表）
-- 偏移解析：从内核函数机器码提取 EPROCESS 字段偏移
-- 隐蔽：文件自删除 + PE 头清零 + 独立物理页 + 匿名驱动对象
+**关键发现**：
+- VT_Driver 存在 EPROCESS 引用计数泄漏
+- NinDriver 读写独立 SpinLock 有理论并发竞态
+- VT_Driver `_TX` 后缀暗示系统线程模式针对腾讯系反作弊
 
-## 下一步: Stage 2 — 核心代码路径分析
+## Stage 2 剩余主题
+1. ~~内存读写路径对比~~ ✅
+2. **VMX 初始化完整路径** — LoadHV 到 VMLAUNCH（建议下一个做驱动加载对比）
+3. **EPT Hook 机制深度分析** — 代码页/数据页分离 + MTF 乒乓
+4. **驱动隐蔽加载路径对比** — 自重映射 / 手动映射+系统线程 / LeiLei加载器
 
-**建议主题划分:**
-1. 内存读写路径对比 — PTE自映射 / MmCopyVirtualMemory+MDL / CR3切换
-2. VMX 初始化完整路径 — LoadHV 到 VMLAUNCH
-3. EPT Hook 机制深度分析 — 代码页/数据页分离 + MTF 乒乓
-4. 驱动隐蔽加载路径对比 — 自重映射 / 手动映射+系统线程 / LeiLei加载器
-
-**建议先做:** 内存读写路径对比（三个项目都涉及，产出最有对比价值）
+**建议下一主题**: 驱动隐蔽加载路径对比（三个项目都涉及，与内存分析互补）
 
 ## 关键规则
 - 所有内容用中文
