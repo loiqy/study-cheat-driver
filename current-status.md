@@ -3,12 +3,12 @@
 > 最后更新：2026-03-28
 
 ## 当前阶段
-**Stage 1 — 单项目结构理解** （进行中：NinDriver ✅ → GsDriver ✅ → VT_Driver 待做）
+**Stage 1 — 单项目结构理解** ✅ 已完成 → 准备进入 Stage 2
 
 ## Stage 1 进度
 - [x] **NinDriver 结构分析** → `notes/nindriver-structure.md`
 - [x] **GsDriver 结构分析** → `notes/gsdriver-structure.md`
-- [ ] VT_Driver 结构分析 → `notes/vtdriver-structure.md`
+- [x] **VT_Driver 结构分析** → `notes/vtdriver-structure.md`
 
 ## Stage 0 已完成 ✅
 - [x] workspace 目录结构初始化
@@ -17,6 +17,22 @@
 - [x] **GsDriver 项目地图** → `notes/project-map-gsdriver.md`
 - [x] **NinDriver 项目地图** → `notes/project-map-nindriver.md`
 - [x] **VT_Driver 项目地图** → `notes/project-map-vtdriver.md`
+
+## VT_Driver 结构分析关键发现 (Stage 1)
+
+### 架构核心：Type-2 Hypervisor + EPT 透明钩取
+- 初始化：LeiLei 多阶段加载 → LoadHV() → 每个 CPU VMXON/VMLAUNCH
+- 通信：NtDeviceIoControlFile 钩取，11 个 IOCTL (0x9800~0x9828)
+- EPT Hook：代码页/数据页分离，MTF 单步乒乓切换，读取看原始/执行走修改
+- VM-exit：65 个 handler，~20 个有逻辑，核心为 CPUID/VMCALL/EPT_VIOLATION/MTF
+
+### 功能矩阵
+- 四层 Hook: EPT / Inline / SSDT / SSSDT
+- 内存读写: KeStackAttach 直接模式 + CR3 切换系统线程模式
+- 反调试: ObCallback/NtRead/NtWrite/NtQueryThread hook
+- 隐藏: MiniFilter 文件隐藏 + SSSDT 窗口隐藏 + EPT 内存隐藏
+- PatchGuard 绕过: Win10/WinX 两个 PoC
+- 网络: AFD 拦截 HTTP 包特征替换
 
 ## GsDriver 结构分析关键发现 (Stage 1)
 
@@ -63,14 +79,23 @@
 - GsDriver: DrvData[1000] 占位符如何被实际核心驱动字节码替换？
 - GsDriver: VMProtect 保护范围？
 - GsDriver: UserVerify 的 RegisterVerify 函数未实现？
-- VT_Driver: 65 个 VM-exit handler 中哪些有实际逻辑？
+- VT_Driver: EPT 预分配 512 页是否足够？高 IRQL 下用尽后触发 panic 的实际场景？
+- VT_Driver: Bypass 模块硬编码偏移仅适用 Win7，是否有动态版本？
+- VT_Driver: LSTAR Hook 的实际调用场景？
+- VT_Driver: capstone vs LDasm vs ShellCode LDE 三个反汇编器的分工？
 - PTE 自映射的 Read/Write 独立自旋锁是否有并发竞态风险？
 - PFN 结构 0x30 字节大小和 EPROCESS 解密公式的版本适用范围？
 - 三个项目的内存读写方式各有什么优劣？
 
 ## 下一步行动
-1. **VT_Driver 结构分析** — Stage 1 最后一步
-2. 完成 Stage 1 后更新阶段状态，进入 Stage 2 核心路径分析
+1. **进入 Stage 2 — 核心代码路径分析**
+2. 建议主题划分见下方
+
+## Stage 2 建议主题划分
+1. **内存读写路径对比** — 三种方案 (PTE自映射 / MmCopyVirtualMemory+MDL / CR3切换) 的完整调用链和检测面
+2. **VMX 初始化完整路径** — VT_Driver 独有，从 LoadHV 到 VMLAUNCH 的每一步
+3. **EPT Hook 机制深度分析** — 代码页/数据页分离 + MTF 乒乓的完整流程
+4. **驱动隐蔽加载路径对比** — 三种加载方式 (自重映射 / 手动映射+系统线程 / LeiLei加载器)
 
 ## 快速跳转
 - 阶段规划 → `learning-roadmap.md`
@@ -79,6 +104,7 @@
 - Stage 1 详情 → `stages/stage-1-project-structure.md`
 - NinDriver 结构 → `notes/nindriver-structure.md`
 - GsDriver 结构 → `notes/gsdriver-structure.md`
+- VT_Driver 结构 → `notes/vtdriver-structure.md`
 - GsDriver 地图 → `notes/project-map-gsdriver.md`
 - NinDriver 地图 → `notes/project-map-nindriver.md`
 - VT_Driver 地图 → `notes/project-map-vtdriver.md`
